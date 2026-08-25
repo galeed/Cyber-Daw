@@ -1,7 +1,8 @@
-// main.js - Código Unificado e Interactivo
 let audioCtx = null;
 let cyberWorkletNode = null;
 let playheadX = 0;
+let canvas = null;
+let ctx = null;
 
 // 1. INICIALIZACIÓN DEL MOTOR DE AUDIO
 async function initAudioEngine() {
@@ -16,25 +17,15 @@ async function initAudioEngine() {
     cyberWorkletNode.connect(audioCtx.destination);
     console.log('⚡ Cyber Engine: AudioWorklet listo.');
   } catch (error) {
-    console.error('Error al cargar AudioWorklet:', error);
+    console.error('Error al cargar AudioWorklet (Asegúrate de usar un servidor web/GitHub Pages):', error);
   }
 }
 
-// 2. TIMELINE CANVAS (REJILLA Y PLAYHEAD)
-const canvas = document.getElementById('timelineCanvas');
-const ctx = canvas.getContext('2d');
-
-function resizeCanvas() {
-  if (!canvas) return;
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-  drawCanvasWithPlayhead();
-}
-
+// 2. TIMELINE CANVAS
 function drawGrid() {
+  if (!ctx || !canvas) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // Rejilla vertical (Compases)
   const gridSpacing = 60;
   ctx.strokeStyle = 'rgba(0, 243, 255, 0.07)';
   ctx.lineWidth = 1;
@@ -45,7 +36,6 @@ function drawGrid() {
     ctx.stroke();
   }
 
-  // Divisiones horizontales (Pistas)
   const trackHeight = 74;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   for (let y = trackHeight; y < canvas.height; y += trackHeight) {
@@ -57,8 +47,8 @@ function drawGrid() {
 }
 
 function drawCanvasWithPlayhead() {
+  if (!ctx) return;
   drawGrid();
-  // Aguja de reproducción (Playhead)
   ctx.strokeStyle = '#ff0055';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -67,53 +57,61 @@ function drawCanvasWithPlayhead() {
   ctx.stroke();
 }
 
-// 3. EVENTOS Y CONTROLADORES INTERACTIVOS
+function resizeCanvas() {
+  if (!canvas) return;
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  drawCanvasWithPlayhead();
+}
+
+// 3. INICIALIZACIÓN DE EVENTOS AL CORTAR EL DOM
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicializar Canvas
+  canvas = document.getElementById('timelineCanvas');
+  if (canvas) ctx = canvas.getContext('2d');
+
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // Clic en Timeline para mover el Playhead
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    playheadX = e.clientX - rect.left;
-    drawCanvasWithPlayhead();
-  });
+  // Click en el Canvas
+  if (canvas) {
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      playheadX = e.clientX - rect.left;
+      drawCanvasWithPlayhead();
+    });
+  }
 
-  // Botones de Transporte (Play, Stop, Rec)
+  // Transporte
   const btnPlay = document.getElementById('btnPlay');
   const btnStop = document.getElementById('btnStop');
   const btnRec = document.getElementById('btnRec');
 
-  btnPlay.addEventListener('click', async () => {
-    await initAudioEngine();
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
+  if (btnPlay) {
+    btnPlay.addEventListener('click', async () => {
+      await initAudioEngine();
+      if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
 
-    cyberWorkletNode.port.postMessage({
-      type: 'SET_PARAM',
-      key: 'isPlaying',
-      value: true
+      if (cyberWorkletNode) {
+        cyberWorkletNode.port.postMessage({ type: 'SET_PARAM', key: 'isPlaying', value: true });
+      }
+      btnPlay.classList.add('neon-button-active');
     });
+  }
 
-    btnPlay.classList.add('neon-button-active');
-  });
-
-  btnStop.addEventListener('click', () => {
-    if (!cyberWorkletNode) return;
-    cyberWorkletNode.port.postMessage({
-      type: 'SET_PARAM',
-      key: 'isPlaying',
-      value: false
+  if (btnStop) {
+    btnStop.addEventListener('click', () => {
+      if (cyberWorkletNode) {
+        cyberWorkletNode.port.postMessage({ type: 'SET_PARAM', key: 'isPlaying', value: false });
+      }
+      if (btnPlay) btnPlay.classList.remove('neon-button-active');
     });
+  }
 
-    btnPlay.classList.remove('neon-button-active');
-  });
+  if (btnRec) {
+    btnRec.addEventListener('click', () => btnRec.classList.toggle('active'));
+  }
 
-  btnRec.addEventListener('click', () => {
-    btnRec.classList.toggle('active');
-  });
-
-  // Botones de Pista (Mute, Solo, Record)
+  // Botones M, S, R de Pistas
   document.querySelectorAll('.track-controls').forEach((group) => {
     group.addEventListener('click', (e) => {
       const btn = e.target;
@@ -126,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Pestañas del Dock Inferior
+  // Pestañas
   const tabs = document.querySelectorAll('.dock-tabs .tab');
   tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -135,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Faders del Mezclador (Arrastrar con el ratón)
+  // Faders
   document.querySelectorAll('.fader-container').forEach((fader) => {
     const handle = fader.querySelector('.fader-handle');
     const dbText = fader.nextElementSibling;
@@ -154,11 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dbText) dbText.textContent = `${db > 0 ? '+' + db : db} dB`;
 
       if (cyberWorkletNode) {
-        cyberWorkletNode.port.postMessage({
-          type: 'SET_PARAM',
-          key: 'gain',
-          value: percent / 100
-        });
+        cyberWorkletNode.port.postMessage({ type: 'SET_PARAM', key: 'gain', value: percent / 100 });
       }
     };
 
