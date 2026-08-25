@@ -58,3 +58,22 @@ document.addEventListener('DOMContentLoaded', () => {
     btnPlay.classList.remove('neon-button-active');
   });
 });
+
+// Activar comportamiento interactivo en controles de pista (M, S, R)
+document.querySelectorAll('.track-controls').forEach((group) => {
+  group.addEventListener('click', (e) => {
+    const btn = e.target;
+    if (!btn.classList.contains('btn-mini')) return;
+
+    const action = btn.textContent.trim();
+
+    if (action === 'M') {
+      btn.classList.toggle('active-mute');
+    } else if (action === 'S') {
+      btn.classList.toggle('active-solo');
+    } else if (action === 'R') {
+      btn.classList.toggle('btn-rec');
+      btn.classList.toggle('active');
+    }
+  });
+});
