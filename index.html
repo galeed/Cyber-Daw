@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber DAW Studio</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+    :root {
+      --bg-dark: #08090d;
+      --panel-bg: rgba(18, 22, 33, 0.7);
+      --panel-border: rgba(0, 243, 255, 0.18);
+      --accent-cyan: #00f3ff;
+      --accent-violet: #b537f2;
+      --accent-magenta: #ff0055;
+      --text-main: #d8e0e8;
+      --text-muted: #627084;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Utilitarios Glassmorphism */
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+    }
+
+    /* 1. TOP BAR / TRANSPORTE */
+    .top-bar {
+      height: 56px;
+      margin: 8px 8px 4px 8px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      color: var(--accent-cyan);
+      text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+    }
+
+    .transport-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
+    }
+
+    .btn-rec:hover, .btn-rec.active {
+      border-color: var(--accent-magenta);
+      color: var(--accent-magenta);
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.4);
+    }
+
+    .display-info {
+      display: flex;
+      gap: 16px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+    }
+
+    .display-info span { color: var(--accent-cyan); }
+
+    /* 2. MAIN WORKSPACE */
+    .workspace {
+      flex: 1;
+      display: flex;
+      margin: 4px 8px;
+      gap: 6px;
+      height: calc(100vh - 270px);
+    }
+
+    /* Track Headers */
+    .track-headers {
+      width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px;
+      overflow-y: auto;
+    }
+
+    .track-header-item {
+      height: 70px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-left: 4px solid var(--accent-cyan);
+      border-radius: 4px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .track-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .track-controls {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-mini {
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .btn-mini.active-mute { color: #ffbd2e; border-color: #ffbd2e; }
+    .btn-mini.active-solo { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+    /* Timeline Canvas */
+    .timeline-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas#timelineCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 3. BOTTOM DOCK / INSPECTOR */
+    .bottom-dock {
+      height: 190px;
+      margin: 4px 8px 8px 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dock-tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--panel-border);
+      padding: 4px 8px 0 8px;
+    }
+
+    .tab {
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 4px 4px 0 0;
+    }
+
+    .tab.active {
+      color: var(--accent-cyan);
+      background: rgba(0, 243, 255, 0.08);
+      border: 1px solid var(--panel-border);
+      border-bottom: none;
+    }
+
+    .dock-content {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      overflow-x: auto;
+    }
+
+    /* Mixer Channel Strip */
+    .channel-strip {
+      width: 80px;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px;
+      gap: 8px;
+    }
+
+    .fader-container {
+      flex: 1;
+      width: 10px;
+      background: #111;
+      border-radius: 5px;
+      position: relative;
+    }
+
+    .fader-handle {
+      width: 20px;
+      height: 10px;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 6px var(--accent-cyan);
+      border-radius: 2px;
+      position: absolute;
+      left: -5px;
+      bottom: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. BARRA DE TRANSPORTE -->
+  <header class="glass-panel top-bar">
+    <div class="brand">⚡ CYBER-DAW</div>
+    
+    <div class="transport-controls">
+      <button class="btn" id="btnPlay">▶ PLAY</button>
+      <button class="btn" id="btnStop">■ STOP</button>
+      <button class="btn btn-rec" id="btnRec">● REC</button>
+    </div>
+
+    <div class="display-info">
+      <div>BPM: <span>138.00</span></div>
+      <div>TIME: <span>00:00:00</span></div>
+      <div>RATE: <span>48 kHz</span></div>
+    </div>
+  </header>
+
+  <!-- 2. WORKSPACE / TIMELINE -->
+  <main class="workspace">
+    <!-- Headers de Pistas -->
+    <aside class="glass-panel track-headers">
+      <div class="track-header-item" style="border-left-color: var(--accent-cyan);">
+        <div class="track-title">01. Kick & Bass</div>
+        <div class="track-controls">
+          <button class="btn-mini active-mute">M</button>
+          <button class="btn-mini">S</button>
+          <button class="btn-mini">R</button>
+        </div>
+      </div>
+      <div class="track-header-item" style="border-left-color: var(--accent-violet);">
+        <div class="track-title">02. Synth Lead</div>
+        <div class="track-controls">
+          <button class="btn-mini">M</button>
+          <button class="btn-mini active-solo">S</button>
+          <button class="btn-mini">R</button>
+        </div>
+      </div>
+      <div class="track-header-item" style="border-left-color: var(--accent-magenta);">
+        <div class="track-title">03. FX & Atmosphere</div>
+        <div class="track-controls">
+          <button class="btn-mini">M</button>
+          <button class="btn-mini">S</button>
+          <button class="btn-mini">R</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas del Timeline -->
+    <section class="glass-panel timeline-container">
+      <canvas id="timelineCanvas"></canvas>
+    </section>
+  </main>
+
+  <!-- 3. PANEL INFERIOR / MEZCLADOR -->
+  <footer class="glass-panel bottom-dock">
+    <div class="dock-tabs">
+      <div class="tab active">MEZCLADOR</div>
+      <div class="tab">PIANO ROLL</div>
+      <div class="tab">ESPECTROGRAMA</div>
+    </div>
+    <div class="dock-content">
+      <!-- Canales de Mezcla -->
+      <div class="channel-strip">
+        <span style="font-size:0.65rem; color:var(--accent-cyan)">CH 01</span>
+        <div class="fader-container"><div class="fader-handle" style="bottom: 70%;"></div></div>
+        <span style="font-size:0.65rem">-3.2 dB</span>
+      </div>
+      <div class="channel-strip">
+        <span style="font-size:0.65rem; color:var(--accent-violet)">CH 02</span>
+        <div class="fader-container"><div class="fader-handle" style="bottom: 55%;"></div></div>
+        <span style="font-size:0.65rem">-6.0 dB</span>
+      </div>
+      <div class="channel-strip">
+        <span style="font-size:0.65rem; color:var(--accent-magenta)">CH 03</span>
+        <div class="fader-container"><div class="fader-handle" style="bottom: 40%;"></div></div>
+        <span style="font-size:0.65rem">-12.5 dB</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Renderizado básico del Grid en HTML5 Canvas
+    const canvas = document.getElementById('timelineCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+      drawGrid();
+    }
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Dibujar Rejilla de Compases
+      const gridSpacing = 60;
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.07)';
+      ctx.lineWidth = 1;
+
+      for (let x = 0; x < canvas.width; x += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      // Líneas horizontales de separación de pistas
+      const trackHeight = 74;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      for (let y = trackHeight; y < canvas.height; y += trackHeight) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+  </script>
+</body>
+</html>
