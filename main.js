@@ -1,64 +1,3 @@
-// main.js
-let audioCtx = null;
-let cyberWorkletNode = null;
-
-// Inicialización del motor de audio (requiere interacción del usuario)
-async function initAudioEngine() {
-  if (audioCtx) return;
-
-  // Crear contexto de audio a 48 kHz
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  audioCtx = new AudioContextClass({ sampleRate: 48000 });
-
-  // Cargar el módulo AudioWorklet
-  try {
-    await audioCtx.audioWorklet.addModule('audio-processor.js');
-    cyberWorkletNode = new AudioWorkletNode(audioCtx, 'cyber-audio-processor');
-    
-    // Conectar el nodo de audio a los altavoces
-    cyberWorkletNode.connect(audioCtx.destination);
-    console.log('⚡ Cyber Engine: AudioWorklet cargado y listo.');
-  } catch (error) {
-    console.error('Error al cargar el AudioWorklet:', error);
-  }
-}
-
-// Mapeo de controles de la interfaz
-document.addEventListener('DOMContentLoaded', () => {
-  const btnPlay = document.getElementById('btnPlay');
-  const btnStop = document.getElementById('btnStop');
-
-  btnPlay.addEventListener('click', async () => {
-    await initAudioEngine();
-    
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-
-    // Enviar señal de inicio al procesador
-    cyberWorkletNode.port.postMessage({
-      type: 'SET_PARAM',
-      key: 'isPlaying',
-      value: true
-    });
-
-    btnPlay.classList.add('neon-button-active');
-  });
-
-  btnStop.addEventListener('click', () => {
-    if (!cyberWorkletNode) return;
-
-    // Enviar señal de detención al procesador
-    cyberWorkletNode.port.postMessage({
-      type: 'SET_PARAM',
-      key: 'isPlaying',
-      value: false
-    });
-
-    btnPlay.classList.remove('neon-button-active');
-  });
-});
-
 // Activar comportamiento interactivo en controles de pista (M, S, R)
 document.querySelectorAll('.track-controls').forEach((group) => {
   group.addEventListener('click', (e) => {
@@ -76,4 +15,53 @@ document.querySelectorAll('.track-controls').forEach((group) => {
       btn.classList.toggle('active');
     }
   });
+});
+
+// Cambio de pestañas en el dock inferior
+const tabs = document.querySelectorAll('.dock-tabs .tab');
+tabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    tabs.forEach((t) => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    // Aquí se renderizará el contenido de la pestaña seleccionada
+    console.log(`Vista cambiada a: ${tab.textContent}`);
+  });
+});
+
+
+// Control táctil / ratón para los Faders del Mezclador
+document.querySelectorAll('.fader-container').forEach((fader) => {
+  const handle = fader.querySelector('.fader-handle');
+  const dbText = fader.nextElementSibling;
+  let isDragging = false;
+
+  const updateFader = (e) => {
+    if (!isDragging) return;
+    const rect = fader.getBoundingClientRect();
+    let offsetY = e.clientY - rect.top;
+
+    // Limitar movimiento dentro del fader
+    offsetY = Math.max(0, Math.min(offsetY, rect.height));
+    const percent = 100 - (offsetY / rect.height) * 100;
+    
+    handle.style.bottom = `${percent}%`;
+
+    // Convertir porcentaje a escala aproximada de dB (-60 dB a +6 dB)
+    const db = ((percent / 100) * 66 - 60).toFixed(1);
+    if (dbText) dbText.textContent = `${db > 0 ? '+' + db : db} dB`;
+
+    // Enviar cambio de volumen al AudioWorklet si la pista está conectada
+    if (cyberWorkletNode) {
+      cyberWorkletNode.port.postMessage({
+        type: 'SET_PARAM',
+        key: 'gain',
+        value: percent / 100
+      });
+    }
+  };
+
+  handle.addEventListener('mousedown', () => (isDragging = true));
+  window.addEventListener('mouseup', () => (isDragging = false));
+  window.addEventListener('mousemove', updateFader);
 });
